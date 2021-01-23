@@ -111,7 +111,7 @@ def _parse_matches(text: str, matches: Iterable[_Match]) -> Iterator[_PrintMatch
 
 
 def _pprn(match: _PrintMatch) -> str:
-    just = 15
+    just = 16
 
     def cont() -> Iterator[str]:
         yield f"{match.row}:{match.col_begin}:{match.col_end}".ljust(just)
