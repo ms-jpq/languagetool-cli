@@ -17,7 +17,7 @@ FROM openjdk:14
 
 WORKDIR /LanguageTool
 COPY --from=build /LanguageTool .
-COPY ./docker/ .
+COPY . .
 
 
 USER nobody
