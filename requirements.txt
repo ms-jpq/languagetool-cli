@@ -1,1 +1,1 @@
-git+https://github.com/ms-jpq/std2.git@b6e6a9e2d36c719b0099fd8d4b5d669bc8b43816
+git+https://github.com/ms-jpq/std2.git@cc0f49ead6a409f935bcdae3ffbf0e92bc4ad1ed

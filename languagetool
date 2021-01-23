@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from itertools import accumulate
 from json import dump, loads
-from os import linesep
+from os import environ, linesep
 from pathlib import Path
 from shutil import which
 from subprocess import DEVNULL, run
@@ -15,11 +15,13 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse, urlunparse
 from urllib.request import Request
 
-_TOP_LV = Path(__file__).resolve().parent
-_REQUIREMENTS = _TOP_LV / "requirements.txt"
-_RT_DIR = _TOP_LV / ".vars" / "runtime"
 
-
+_XDG_DATA_HOME = environ.get("XDG_DATA_HOME")
+_RT_DIR = (
+    (Path(_XDG_DATA_HOME) if _XDG_DATA_HOME else Path().home() / ".local" / "share")
+    / "languagetool_cli"
+    / "runtime"
+)
 _RT_DIR.mkdir(parents=True, exist_ok=True)
 path.append(str(_RT_DIR))
 
@@ -29,6 +31,7 @@ try:
     from std2.types import never
     from std2.urllib import urlopen
 except ImportError:
+    _REQUIREMENTS = Path(__file__).resolve().parent / "requirements.txt"
     cmd = "pip3"
     if which(cmd):
         proc = run(
