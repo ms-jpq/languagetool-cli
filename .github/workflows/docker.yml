@@ -23,4 +23,4 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: ${{ secrets.DOCKER_USERNAME }}/languagetool
           tags: latest
-          Dockerfile: Dockerfile
+          Dockerfile: docker/Dockerfile

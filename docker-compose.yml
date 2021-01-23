@@ -2,6 +2,6 @@ version: "3.8"
 
 services:
   lang_tools:
-    build: .
+    build: ./docker
     ports:
       - "8080:8080"
