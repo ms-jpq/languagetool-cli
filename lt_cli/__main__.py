@@ -16,6 +16,7 @@ def _parse_args() -> Namespace:
         choices=tuple(f.name for f in PrintFmt),
         default=PrintFmt.pretty.name,
     )
+    parser.add_argument("--left-pad", type=int, default=16)
     return parser.parse_args()
 
 
@@ -34,7 +35,7 @@ def main() -> None:
             print(e, file=stderr)
             exit(1)
         else:
-            for out in pprn(fmt, text=text, resp=resp):
+            for out in pprn(fmt, text=text, resp=resp, l_pad=args.left_pad):
                 print(out, sep="", end="")
 
 

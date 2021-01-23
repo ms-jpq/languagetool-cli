@@ -9,7 +9,6 @@ from std2.pickle import encode
 from std2.tree import recur_sort
 from std2.types import never
 
-from .consts import L_PAD
 from .types import Context, Match, Resp
 
 
@@ -54,28 +53,28 @@ def _parse_matches(text: str, matches: Iterable[Match]) -> Iterator[_PrintMatch]
         )
 
 
-def _pprn_match(match: _PrintMatch, just: int) -> Iterator[str]:
+def _pprn_match(match: _PrintMatch, l_pad: int) -> Iterator[str]:
     idx = f"{match.row + 1}:{match.col_begin + 1}:{match.col_end + 1}"
-    yield idx.ljust(just)
+    yield idx.ljust(l_pad)
     yield match.text
     yield linesep
 
     ctx = match.context
-    yield " " * just
+    yield " " * l_pad
     yield ctx.text
     yield linesep
-    yield " " * just
+    yield " " * l_pad
     yield " " * ctx.offset
     yield "^" * ctx.length
     yield linesep
 
-    yield " " * just
+    yield " " * l_pad
     yield match.reason
     yield linesep
     yield linesep
 
 
-def pprn(fmt: PrintFmt, text: str, resp: Resp) -> Iterator[str]:
+def pprn(fmt: PrintFmt, text: str, resp: Resp, l_pad: int) -> Iterator[str]:
     if fmt is PrintFmt.json:
         yield dumps(
             recur_sort(encode(resp)),
@@ -87,6 +86,6 @@ def pprn(fmt: PrintFmt, text: str, resp: Resp) -> Iterator[str]:
         yield linesep
         yield linesep
         for match in _parse_matches(text, resp.matches):
-            yield from _pprn_match(match, just=L_PAD)
+            yield from _pprn_match(match, l_pad=l_pad)
     else:
         never(fmt)
