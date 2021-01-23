@@ -17,7 +17,7 @@ FROM openjdk:14
 
 WORKDIR /LanguageTool
 COPY --from=build /LanguageTool .
-COPY init.sh .
+COPY ./docker/ .
 
 
 USER nobody
