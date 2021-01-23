@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from itertools import accumulate
 from json import dump, loads
+from os import linesep
 from sys import stderr, stdin, stdout
 from typing import Iterable, Iterator, Mapping, Optional, Sequence, Union, cast
 from urllib.parse import quote
@@ -74,8 +75,9 @@ class _PrintMatch:
     col_begin: int
     col_end: int
     text: str
-    context: str
+    context: _Context
     reason: str
+    replacements: Sequence[str]
 
 
 class _PrintFmt(Enum):
@@ -85,36 +87,50 @@ class _PrintFmt(Enum):
 
 def _parse_matches(text: str, matches: Iterable[_Match]) -> Iterator[_PrintMatch]:
     lengths = tuple(len(line) for line in text.splitlines(keepends=True))
+    acc_l = tuple(accumulate(lengths))
     for match in matches:
-        row = sum(l < match.offset for l in accumulate(lengths))
-        col_begin = match.offset - sum(l for l in lengths if l < match.offset)
+        row = sum(l < match.offset for l in acc_l)
+        col_begin = match.offset - sum(
+            l for l, a in zip(lengths, acc_l) if a < match.offset
+        )
         col_end = col_begin + match.length
+
         match_text = text[match.offset : match.offset + match.length]
-        context = match.context.text
+        replacements = tuple(r.value for r in match.replacements)
         reason = match.message or match.shortMessage
+
         yield _PrintMatch(
             row=row,
             col_begin=col_begin,
             col_end=col_end,
             text=match_text,
-            context=context,
+            context=match.context,
             reason=reason,
+            replacements=replacements,
         )
 
 
 def _pprn(match: _PrintMatch) -> str:
+    just = 15
+
     def cont() -> Iterator[str]:
-        yield str(match.row)
-        yield ":"
-        yield str(match.col_begin)
-        yield ":"
-        yield str(match.col_end)
-        yield "  "
-        yield f'"{match.text}"'
-        yield " in "
-        yield f'"{match.context}"'
-        yield "  "
+        yield f"{match.row}:{match.col_begin}:{match.col_end}".ljust(just)
+        yield match.text
+        yield linesep
+
+        ctx = match.context
+        yield " " * just
+        yield ctx.text
+        yield linesep
+        yield " " * just
+        yield " " * ctx.offset
+        yield "^" * ctx.length
+        yield linesep
+
+        yield " " * just
         yield match.reason
+        yield linesep
+        yield linesep
 
     return "".join(cont())
 
@@ -171,6 +187,7 @@ def main() -> None:
         elif fmt is _PrintFmt.pretty:
             for match in matches:
                 print(_pprn(match))
+                pass
         else:
             never(fmt)
 
