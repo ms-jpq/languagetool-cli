@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from json import dump, loads
 from sys import stderr, stdin, stdout
-from typing import Optional, Sequence, Union
+from typing import Mapping, Optional, Sequence, Union, cast
 from urllib.parse import quote
 from urllib.request import HTTPError, Request
 
@@ -92,9 +92,13 @@ def main() -> None:
         "Content-Type": " application/x-www-form-urlencoded",
         "Accept": "application/json",
     }
-    form_data = {"language": "auto", "text": stdin.read()}
+    form_data = _Req(text=stdin.read(), data=None)
 
-    data = "&".join(f"{key}={quote(val)}" for key, val in form_data.items()).encode()
+    data = "&".join(
+        f"{key}={quote(val)}"
+        for key, val in cast(Mapping[str, str], encode(form_data)).items()
+        if val is not None
+    ).encode()
     req = Request(url=url, headers=headers, data=data)
 
     try:
