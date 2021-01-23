@@ -93,7 +93,7 @@ def _parse_matches(text: str, matches: Iterable[_Match]) -> Iterator[_PrintMatch
         col_begin = match.offset - sum(
             l for l, a in zip(lengths, acc_l) if a < match.offset
         )
-        col_end = col_begin + match.length
+        col_end = col_begin + match.length - 1
 
         match_text = text[match.offset : match.offset + match.length]
         replacements = tuple(r.value for r in match.replacements)
@@ -114,7 +114,8 @@ def _pprn(match: _PrintMatch) -> str:
     just = 16
 
     def cont() -> Iterator[str]:
-        yield f"{match.row}:{match.col_begin}:{match.col_end}".ljust(just)
+        idx = f"{match.row + 1}:{match.col_begin + 1}:{match.col_end + 1}"
+        yield idx.ljust(just)
         yield match.text
         yield linesep
 
