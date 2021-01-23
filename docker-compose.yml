@@ -1,0 +1,7 @@
+version: "3.8"
+
+services:
+  lang_tools:
+    build: .
+    ports:
+      - "8080:8081"
