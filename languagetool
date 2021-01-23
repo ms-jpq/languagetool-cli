@@ -3,9 +3,10 @@
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 from enum import Enum, auto
+from itertools import accumulate
 from json import dump, loads
 from sys import stderr, stdin, stdout
-from typing import Mapping, Optional, Sequence, Union, cast
+from typing import Iterable, Iterator, Mapping, Optional, Sequence, Union, cast
 from urllib.parse import quote
 from urllib.request import HTTPError, Request
 
@@ -67,24 +68,73 @@ class _Resp:
     matches: Sequence[_Match]
 
 
+@dataclass(frozen=True)
+class _PrintMatch:
+    row: int
+    col_begin: int
+    col_end: int
+    text: str
+    context: str
+    reason: str
+
+
 class _PrintFmt(Enum):
     json = auto()
+    pretty = auto()
+
+
+def _parse_matches(text: str, matches: Iterable[_Match]) -> Iterator[_PrintMatch]:
+    lengths = tuple(len(line) for line in text.splitlines(keepends=True))
+    for match in matches:
+        row = sum(l < match.offset for l in accumulate(lengths))
+        col_begin = match.offset - sum(l for l in lengths if l < match.offset)
+        col_end = col_begin + match.length
+        match_text = text[match.offset : match.offset + match.length]
+        context = match.context.text
+        reason = match.message or match.shortMessage
+        yield _PrintMatch(
+            row=row,
+            col_begin=col_begin,
+            col_end=col_end,
+            text=match_text,
+            context=context,
+            reason=reason,
+        )
+
+
+def _pprn(match: _PrintMatch) -> str:
+    def cont() -> Iterator[str]:
+        yield str(match.row)
+        yield ":"
+        yield str(match.col_begin)
+        yield ":"
+        yield str(match.col_end)
+        yield "  "
+        yield f'"{match.text}"'
+        yield " in "
+        yield f'"{match.context}"'
+        yield "  "
+        yield match.reason
+
+    return "".join(cont())
 
 
 def _parse_args() -> Namespace:
+    fmt = _PrintFmt.pretty.name if not stdin.isatty() else _PrintFmt.json.name
     parser = ArgumentParser()
     parser.add_argument("server")
     parser.add_argument(
         "-f",
         "--format",
         choices=tuple(p.name for p in _PrintFmt),
-        default=_PrintFmt.json.name,
+        default=fmt,
     )
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
+    text = stdin.read()
     fmt = _PrintFmt[args.format]
 
     url = f"{args.server}/v2/check"
@@ -92,7 +142,7 @@ def main() -> None:
         "Content-Type": " application/x-www-form-urlencoded",
         "Accept": "application/json",
     }
-    form_data = _Req(text=stdin.read(), data=None)
+    form_data = _Req(text=text, data=None)
 
     data = "&".join(
         f"{key}={quote(val)}"
@@ -109,9 +159,18 @@ def main() -> None:
     else:
         json = loads(reply)
         linted: _Resp = decode(_Resp, json, strict=False)
+        matches = _parse_matches(text, matches=linted.matches)
 
         if fmt is _PrintFmt.json:
-            dump(encode(linted), fp=stdout, check_circular=False, ensure_ascii=False)
+            dump(
+                encode(tuple(matches)),
+                fp=stdout,
+                check_circular=False,
+                ensure_ascii=False,
+            )
+        elif fmt is _PrintFmt.pretty:
+            for match in matches:
+                print(_pprn(match))
         else:
             never(fmt)
 
