@@ -6,6 +6,8 @@ from shutil import which
 from subprocess import DEVNULL, run
 from sys import argv, path, stderr
 
+from lt_cli.consts import REQUIREMENTS
+
 _XDG_DATA_HOME = environ.get("XDG_DATA_HOME")
 _RT_DIR = (
     (Path(_XDG_DATA_HOME) if _XDG_DATA_HOME else Path().home() / ".local" / "share")
@@ -19,7 +21,6 @@ path.append(str(_RT_DIR))
 try:
     import std2
 except ImportError:
-    _REQUIREMENTS = Path(__file__).resolve().parent / "requirements.txt"
     cmd = "pip3"
     if which(cmd):
         proc = run(
@@ -30,7 +31,7 @@ except ImportError:
                 "--target",
                 str(_RT_DIR),
                 "--requirement",
-                str(_REQUIREMENTS),
+                str(REQUIREMENTS),
             ),
             cwd=_RT_DIR,
             stdin=DEVNULL,
