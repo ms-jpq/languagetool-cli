@@ -18,6 +18,8 @@ FROM openjdk:14
 WORKDIR /LanguageTool
 COPY --from=build /LanguageTool .
 COPY init.sh .
-EXPOSE 8080
 
+
+USER nobody
+EXPOSE 8080
 ENTRYPOINT ["./init.sh"]
