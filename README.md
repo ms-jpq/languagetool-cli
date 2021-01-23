@@ -1,3 +1,3 @@
-# Docker Languagetool
+# Languagetool CLI
 
-Dockerized version of [Languagetool](https://github.com/languagetool-org/languagetool)
+Run [Languagetool](https://github.com/languagetool-org/languagetool) as a CLI linter.

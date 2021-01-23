@@ -17,6 +17,7 @@ setup(
     author="ms-jpq",
     author_email="github@bigly.dog",
     url="https://github.com/ms-jpq/languagetool_cli",
+    scripts=("lt-cli",),
     packages=packages,
     package_data=package_data,
 )
