@@ -2,27 +2,16 @@
 
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
-from email.mime.multipart import MIMEMultipart
-from email.mime.nonmultipart import MIMENonMultipart
-from json import loads
-from sys import stderr, stdin
-from typing import Any, Mapping, Optional, Sequence, Union
+from enum import Enum, auto
+from json import dump, loads
+from sys import stderr, stdin, stdout
+from typing import Optional, Sequence, Union
+from urllib.parse import quote
 from urllib.request import HTTPError, Request
 
-from std2.pickle import decode
+from std2.pickle import decode, encode
+from std2.types import never
 from std2.urllib import urlopen
-
-
-def encode_form_data(fields: Mapping[str, Any]) -> MIMEMultipart:
-    m = MIMEMultipart("form-data")
-
-    for key, val in fields.items():
-        part = MIMENonMultipart("text", "plain")
-        part.add_header("Content-Disposition", f'form-data; name="{key}"')
-        part.set_payload(val)
-        m.attach(part)
-
-    return m
 
 
 @dataclass(frozen=True)
@@ -46,15 +35,13 @@ class _Req:
 
 
 @dataclass(frozen=True)
-class _Replacement:
-    value: str
+class _Lang:
+    name: str
 
 
 @dataclass(frozen=True)
-class _Match:
-    message: str
-    shortMessage: str
-    replacements: Sequence[_Replacement]
+class _Replacement:
+    value: str
 
 
 @dataclass(frozen=True)
@@ -65,40 +52,64 @@ class _Context:
 
 
 @dataclass(frozen=True)
-class _Resp:
-    matches: Sequence[_Match]
+class _Match:
+    message: str
+    shortMessage: str
     offset: int
     length: int
     context: _Context
+    replacements: Sequence[_Replacement]
+
+
+@dataclass(frozen=True)
+class _Resp:
+    language: _Lang
+    matches: Sequence[_Match]
+
+
+class _PrintFmt(Enum):
+    json = auto()
 
 
 def _parse_args() -> Namespace:
     parser = ArgumentParser()
     parser.add_argument("server")
+    parser.add_argument(
+        "-f",
+        "--format",
+        choices=tuple(p.name for p in _PrintFmt),
+        default=_PrintFmt.json.name,
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
+    fmt = _PrintFmt[args.format]
+
     url = f"{args.server}/v2/check"
-    form_data = {
-        "language": "auto",
-        "text": "cryging"
+    headers = {
+        "Content-Type": " application/x-www-form-urlencoded",
+        "Accept": "application/json",
     }
-    data = encode_form_data(form_data).as_bytes()
-    req = Request(url=url, data=data)
+    form_data = {"language": "auto", "text": stdin.read()}
+
+    data = "&".join(f"{key}={quote(val)}" for key, val in form_data.items()).encode()
+    req = Request(url=url, headers=headers, data=data)
 
     try:
         with urlopen(req) as resp:
-            reply = resp.read()
+            reply = resp.read().decode()
     except HTTPError as e:
         print(e, file=stderr)
     else:
-        # json = loads(reply)
-        # fuck: _Resp = decode(_Resp, json)
+        json = loads(reply)
+        linted: _Resp = decode(_Resp, json, strict=False)
 
-        print(reply)
-
+        if fmt is _PrintFmt.json:
+            dump(encode(linted), fp=stdout, check_circular=False, ensure_ascii=False)
+        else:
+            never(fmt)
 
 
 main()
