@@ -24,4 +24,3 @@ jobs:
           repository: ${{ secrets.DOCKER_USERNAME }}/languagetool
           tags: latest
           path: docker
-          Dockerfile: Dockerfile
