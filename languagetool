@@ -6,14 +6,52 @@ from enum import Enum, auto
 from itertools import accumulate
 from json import dump, loads
 from os import linesep
-from sys import stderr, stdin, stdout
+from pathlib import Path
+from shutil import which
+from subprocess import DEVNULL, run
+from sys import argv, path, stderr, stdin, stdout
 from typing import Iterable, Iterator, Mapping, Optional, Sequence, Union, cast
-from urllib.parse import quote
-from urllib.request import HTTPError, Request
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote, urlparse, urlunparse
+from urllib.request import Request
 
-from std2.pickle import decode, encode
-from std2.types import never
-from std2.urllib import urlopen
+_TOP_LV = Path(__file__).resolve().parent
+_REQUIREMENTS = _TOP_LV / "requirements.txt"
+_RT_DIR = _TOP_LV / ".vars" / "runtime"
+
+
+_RT_DIR.mkdir(parents=True, exist_ok=True)
+path.append(str(_RT_DIR))
+
+
+try:
+    from std2.pickle import decode, encode
+    from std2.types import never
+    from std2.urllib import urlopen
+except ImportError:
+    cmd = "pip3"
+    if which(cmd):
+        proc = run(
+            (
+                cmd,
+                "install",
+                "--upgrade",
+                "--target",
+                str(_RT_DIR),
+                "--requirement",
+                str(_REQUIREMENTS),
+            ),
+            cwd=_RT_DIR,
+            stdin=DEVNULL,
+            stdout=stderr,
+        )
+        if proc.returncode:
+            exit(proc.returncode)
+        else:
+            proc = run(argv)
+            exit(proc.returncode)
+    else:
+        raise
 
 
 @dataclass(frozen=True)
@@ -80,19 +118,14 @@ class _PrintMatch:
     replacements: Sequence[str]
 
 
-class _PrintFmt(Enum):
-    json = auto()
-    pretty = auto()
-
-
 def _parse_matches(text: str, matches: Iterable[_Match]) -> Iterator[_PrintMatch]:
-    lengths = tuple(len(line) for line in text.splitlines(keepends=True))
-    acc_l = tuple(accumulate(lengths))
+    lens = tuple(len(line) for line in text.splitlines(keepends=True))
+    acc_l = tuple(accumulate(lens))
+    l_acc_l = tuple(zip(lens, acc_l))
+
     for match in matches:
         row = sum(l < match.offset for l in acc_l)
-        col_begin = match.offset - sum(
-            l for l, a in zip(lengths, acc_l) if a < match.offset
-        )
+        col_begin = match.offset - sum(l for l, a in l_acc_l if a < match.offset)
         col_end = col_begin + match.length - 1
 
         match_text = text[match.offset : match.offset + match.length]
@@ -136,61 +169,73 @@ def _pprn(match: _PrintMatch) -> str:
     return "".join(cont())
 
 
+class _PrintFmt(Enum):
+    json = auto()
+    pretty = auto()
+
+
 def _parse_args() -> Namespace:
-    fmt = _PrintFmt.pretty.name if not stdin.isatty() else _PrintFmt.json.name
     parser = ArgumentParser()
+    parser.add_argument("source", default="-")
     parser.add_argument("server")
     parser.add_argument(
         "-f",
         "--format",
-        choices=tuple(p.name for p in _PrintFmt),
-        default=fmt,
+        choices=tuple(f.name for f in _PrintFmt),
+        default=_PrintFmt.pretty.name,
     )
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
-    text = stdin.read()
-    fmt = _PrintFmt[args.format]
-
-    url = f"{args.server}/v2/check"
-    headers = {
-        "Content-Type": " application/x-www-form-urlencoded",
-        "Accept": "application/json",
-    }
-    form_data = _Req(text=text, data=None)
-
-    data = "&".join(
-        f"{key}={quote(val)}"
-        for key, val in cast(Mapping[str, str], encode(form_data)).items()
-        if val is not None
-    ).encode()
-    req = Request(url=url, headers=headers, data=data)
-
     try:
-        with urlopen(req) as resp:
-            reply = resp.read().decode()
-    except HTTPError as e:
+        text = stdin.read() if args.source == "-" else Path(args.source).read_text()
+    except (FileNotFoundError, PermissionError) as e:
         print(e, file=stderr)
+        exit(1)
     else:
-        json = loads(reply)
-        linted: _Resp = decode(_Resp, json, strict=False)
-        matches = _parse_matches(text, matches=linted.matches)
+        fmt = _PrintFmt[args.format]
+        server = urlparse(args.server)
+        url = urlunparse((server.scheme, server.netloc, "/v2/check", None, None, None))
+        form_data = _Req(text=text, data=None)
 
-        if fmt is _PrintFmt.json:
-            dump(
-                encode(tuple(matches)),
-                fp=stdout,
-                check_circular=False,
-                ensure_ascii=False,
-            )
-        elif fmt is _PrintFmt.pretty:
-            for match in matches:
-                print(_pprn(match))
-                pass
+        data = "&".join(
+            f"{key}={quote(val)}"
+            for key, val in cast(Mapping[str, str], encode(form_data)).items()
+            if val is not None
+        ).encode()
+        req = Request(url=url, data=data)
+
+        try:
+            with urlopen(req) as resp:
+                reply = resp.read().decode()
+        except (URLError, HTTPError) as e:
+            print(e, file=stderr)
+            exit(1)
         else:
-            never(fmt)
+            json = loads(reply)
+            linted: _Resp = decode(_Resp, json, strict=False)
+            matches = _parse_matches(text, matches=linted.matches)
+
+            if fmt is _PrintFmt.json:
+                dump(
+                    encode(tuple(matches)),
+                    fp=stdout,
+                    check_circular=False,
+                    ensure_ascii=False,
+                )
+            elif fmt is _PrintFmt.pretty:
+                for match in matches:
+                    print(_pprn(match))
+                    pass
+            else:
+                never(fmt)
 
 
-main()
+try:
+    main()
+except BrokenPipeError:
+    exit()
+except KeyboardInterrupt:
+    exit(130)
