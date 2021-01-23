@@ -19,4 +19,4 @@ WORKDIR /LanguageTool
 COPY --from=build /LanguageTool .
 EXPOSE 8080
 
-CMD ["java", "-cp", "languagetool-server.jar", "org.languagetool.server.HTTPServer", "--port=8080", "--public", "--allow-origin=*"]
+ENTRYPOINT ["./init.sh"]
