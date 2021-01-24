@@ -90,6 +90,7 @@ def pprn(fmt: PrintFmt, text: str, resp: Resp, l_pad: int) -> Iterator[str]:
     elif fmt is PrintFmt.pretty:
         cols, _ = get_terminal_size()
         yield "#" * cols
+        yield linesep
 
         yield resp.language.name
         yield linesep * 2
