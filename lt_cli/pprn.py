@@ -3,6 +3,7 @@ from enum import Enum, auto
 from itertools import accumulate
 from json import dumps
 from os import linesep
+from shutil import get_terminal_size
 from typing import Iterable, Iterator, Sequence
 
 from std2.pickle import encode
@@ -24,6 +25,8 @@ class _PrintMatch:
     col_end: int
     text: str
     context: Context
+    rule: str
+    short_reason: str
     reason: str
     replacements: Sequence[str]
 
@@ -40,7 +43,6 @@ def _parse_matches(text: str, matches: Iterable[Match]) -> Iterator[_PrintMatch]
 
         match_text = text[match.offset : match.offset + match.length]
         replacements = tuple(r.value for r in match.replacements)
-        reason = match.message or match.shortMessage
 
         yield _PrintMatch(
             row=row,
@@ -48,7 +50,9 @@ def _parse_matches(text: str, matches: Iterable[Match]) -> Iterator[_PrintMatch]
             col_end=col_end,
             text=match_text,
             context=match.context,
-            reason=reason,
+            rule=match.rule.id,
+            short_reason=match.shortMessage,
+            reason=match.message,
             replacements=replacements,
         )
 
@@ -69,12 +73,13 @@ def _pprn_match(match: _PrintMatch, l_pad: int) -> Iterator[str]:
     yield linesep
 
     yield " " * l_pad
-    yield match.reason
+    yield match.short_reason or match.reason
     yield linesep
     yield linesep
 
 
 def pprn(fmt: PrintFmt, text: str, resp: Resp, l_pad: int) -> Iterator[str]:
+    cols, _ = get_terminal_size()
     if fmt is PrintFmt.json:
         yield dumps(
             recur_sort(encode(resp)),
@@ -86,6 +91,7 @@ def pprn(fmt: PrintFmt, text: str, resp: Resp, l_pad: int) -> Iterator[str]:
         yield linesep
         yield linesep
         for match in _parse_matches(text, resp.matches):
+            yield cols * "*"
             yield from _pprn_match(match, l_pad=l_pad)
     else:
         never(fmt)

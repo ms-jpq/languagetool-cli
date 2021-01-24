@@ -51,12 +51,18 @@ class Context:
 
 
 @dataclass(frozen=True)
+class _Rule:
+    id: str
+
+
+@dataclass(frozen=True)
 class Match:
     message: str
     shortMessage: str
     offset: int
     length: int
     context: Context
+    rule: _Rule
     replacements: Sequence[_Replacement]
 
 
