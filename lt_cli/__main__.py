@@ -32,12 +32,7 @@ def main() -> None:
     args = _parse_args()
     fmt = PrintFmt[args.format]
     try:
-        if args.stdin:
-            text = stdin.read()
-        elif args.source:
-            text = Path(args.source).read_text()
-        else:
-            assert False
+        text = stdin.read() if args.stdin else Path(args.source).read_text()
     except (FileNotFoundError, PermissionError) as e:
         print(e, file=stderr)
         exit(1)
