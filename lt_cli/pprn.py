@@ -92,6 +92,7 @@ def pprn(fmt: PrintFmt, text: str, resp: Resp, l_pad: int) -> Iterator[str]:
         yield linesep
         for match in _parse_matches(text, resp.matches):
             yield cols * "*"
+            yield linesep
             yield from _pprn_match(match, l_pad=l_pad)
     else:
         never(fmt)
