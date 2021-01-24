@@ -3,7 +3,8 @@ from pathlib import Path
 from sys import stderr, stdin
 
 from .pprn import PrintFmt, pprn
-from .req import req
+from .req import send_req
+from .types import Req
 
 
 def _parse_args() -> Namespace:
@@ -37,8 +38,21 @@ def main() -> None:
         print(e, file=stderr)
         exit(1)
     else:
+        req = Req(
+            level=args.level,
+            text=text,
+            data=None,
+            dicts=args.dicts,
+            motherTongue=args.mother_tongue,
+            preferredVariants=args.preferred_variants,
+            enabledOnly=args.enabled_only,
+            enabledRules=args.enabled_rules,
+            disabledRules=args.disabled_rules,
+            enabledCategories=args.enabled_categories,
+            disabledCategories=args.disabled_categories,
+        )
         try:
-            resp = req(args.server, text=text)
+            resp = send_req(args.server, req=req)
         except Exception as e:
             print(e, file=stderr)
             exit(1)
@@ -50,6 +64,6 @@ def main() -> None:
 try:
     main()
 except BrokenPipeError:
-    exit()
+    exit(13)
 except KeyboardInterrupt:
     exit(130)

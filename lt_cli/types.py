@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Sequence, Union
+from typing import Literal, Optional, Sequence, Union
 
 
 @dataclass(frozen=True)
@@ -17,8 +17,20 @@ _Data = Sequence[Union[_DataNode1, _DataNode2]]
 
 @dataclass(frozen=True)
 class Req:
+    level: Literal["default", "picky"]
     text: Optional[str]
     data: Optional[_Data]
+
+    dicts: Sequence[str]
+    motherTongue: Sequence[str]
+    preferredVariants: Sequence[str]
+
+    enabledOnly: bool
+    enabledRules: Sequence[str]
+    disabledRules: Sequence[str]
+    enabledCategories: Sequence[str]
+    disabledCategories: Sequence[str] = ()
+
     language: str = "auto"
 
 
