@@ -17,6 +17,7 @@ _Data = Sequence[Union[_DataNode1, _DataNode2]]
 
 @dataclass(frozen=True)
 class Req:
+    language: Union[Literal["auto"], str]
     level: Literal["default", "picky"]
     text: Optional[str]
     data: Optional[_Data]
@@ -29,9 +30,7 @@ class Req:
     enabledRules: Sequence[str]
     disabledRules: Sequence[str]
     enabledCategories: Sequence[str]
-    disabledCategories: Sequence[str] = ()
-
-    language: str = "auto"
+    disabledCategories: Sequence[str]
 
 
 @dataclass(frozen=True)

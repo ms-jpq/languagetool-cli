@@ -21,6 +21,22 @@ def _parse_args() -> Namespace:
         default=PrintFmt.pretty.name,
     )
     parser.add_argument("--left-pad", type=int, default=16)
+
+    parser.add_argument("-l", "--language", default="auto")
+    parser.add_argument(
+        "--level", "--lv", choices=("default", "picky"), default="default"
+    )
+    parser.add_argument("-w", "--words", nargs="*", default=())
+    parser.add_argument("--mother-tongue", "--mt", nargs="*", default=())
+    parser.add_argument("--preferred-variants", "--pv", nargs="*", default=())
+
+    parser.add_argument("--enabled-only", action="store_true", default=False)
+    parser.add_argument("--enabled-rules", "--er", nargs="*", default=())
+    parser.add_argument("--disabled-rules", "--dr", nargs="*", default=())
+
+    parser.add_argument("--enabled-categories", "--ec", nargs="*", default=())
+    parser.add_argument("--disabled-categories", "--dc", nargs="*", default=())
+
     args = parser.parse_args()
     if not args.stdin and not args.source:
         parser.print_help()
@@ -39,10 +55,11 @@ def main() -> None:
         exit(1)
     else:
         req = Req(
+            language=args.language,
             level=args.level,
             text=text,
             data=None,
-            dicts=args.dicts,
+            dicts=args.words,
             motherTongue=args.mother_tongue,
             preferredVariants=args.preferred_variants,
             enabledOnly=args.enabled_only,
