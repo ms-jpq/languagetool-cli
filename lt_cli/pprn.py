@@ -58,6 +58,9 @@ def _parse_matches(text: str, matches: Iterable[Match]) -> Iterator[_PrintMatch]
 
 
 def _pprn_match(match: _PrintMatch, l_pad: int) -> Iterator[str]:
+    yield match.rule
+    yield linesep * 2
+
     idx = f"{match.row + 1}:{match.col_begin + 1}:{match.col_end + 1}"
     yield idx.ljust(l_pad)
     yield match.text
@@ -74,12 +77,10 @@ def _pprn_match(match: _PrintMatch, l_pad: int) -> Iterator[str]:
 
     yield " " * l_pad
     yield match.short_reason or match.reason
-    yield linesep
-    yield linesep
+    yield linesep * 2
 
 
 def pprn(fmt: PrintFmt, text: str, resp: Resp, l_pad: int) -> Iterator[str]:
-    cols, _ = get_terminal_size()
     if fmt is PrintFmt.json:
         yield dumps(
             recur_sort(encode(resp)),
@@ -87,12 +88,17 @@ def pprn(fmt: PrintFmt, text: str, resp: Resp, l_pad: int) -> Iterator[str]:
             ensure_ascii=False,
         )
     elif fmt is PrintFmt.pretty:
+        cols, _ = get_terminal_size()
+        yield "#" * cols
+
         yield resp.language.name
-        yield linesep
-        yield linesep
+        yield linesep * 2
+
         for match in _parse_matches(text, resp.matches):
             yield cols * "*"
             yield linesep
             yield from _pprn_match(match, l_pad=l_pad)
+
+        yield "#" * cols
     else:
         never(fmt)
