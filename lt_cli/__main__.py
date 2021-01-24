@@ -9,7 +9,10 @@ from .req import req
 def _parse_args() -> Namespace:
     parser = ArgumentParser()
     parser.add_argument("server")
-    parser.add_argument("source", default="-")
+    parser.add_argument(
+        "source", nargs="?", help="either <source> or <--stdin> must be specified"
+    )
+    parser.add_argument("-", "--stdin", action="store_true")
     parser.add_argument(
         "-f",
         "--format",
@@ -17,14 +20,24 @@ def _parse_args() -> Namespace:
         default=PrintFmt.pretty.name,
     )
     parser.add_argument("--left-pad", type=int, default=16)
-    return parser.parse_args()
+    args = parser.parse_args()
+    if not args.stdin and not args.source:
+        parser.print_help()
+        exit(1)
+    else:
+        return args
 
 
 def main() -> None:
     args = _parse_args()
     fmt = PrintFmt[args.format]
     try:
-        text = stdin.read() if args.source == "-" else Path(args.source).read_text()
+        if args.stdin:
+            text = stdin.read()
+        elif args.source:
+            text = Path(args.source).read_text()
+        else:
+            assert False
     except (FileNotFoundError, PermissionError) as e:
         print(e, file=stderr)
         exit(1)
